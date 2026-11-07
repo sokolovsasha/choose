@@ -1,0 +1,710 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#0b0b10">
+<title>Выбираем отраву на сегодня</title>
+<style>
+  * {
+    box-sizing: border-box;
+    -webkit-box-sizing: border-box;
+  }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    width: 100%;
+    overflow: hidden;
+    background: #0b0b10;
+    color: #fff;
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -webkit-tap-highlight-color: transparent;
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
+    touch-action: manipulation;
+    overscroll-behavior: none;
+  }
+
+  body {
+    position: fixed;
+    top: 0; right: 0; bottom: 0; left: 0;
+  }
+
+  #app {
+    position: absolute;
+    top: 0; right: 0; bottom: 0; left: 0;
+    display: flex;
+    flex-direction: column;
+    padding: calc(env(safe-area-inset-top, 0px) + 8px) 16px calc(env(safe-area-inset-bottom, 0px) + 10px);
+  }
+
+  /* ---------- header ---------- */
+  header {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 4px 2px 10px;
+    flex: none;
+  }
+  .title { font-size: 15px; font-weight: 700; letter-spacing: .2px; }
+  .sub { font-size: 12px; color: #8a8a99; margin-top: 3px; }
+  #resetBtn {
+    margin-left: auto;
+    width: 38px; height: 38px;
+    border-radius: 50%;
+    border: none;
+    background: #16161f;
+    color: #9a9aab;
+    font-size: 19px;
+    font-family: inherit;
+    display: flex; align-items: center; justify-content: center;
+    flex: none;
+    -webkit-appearance: none;
+    appearance: none;
+  }
+  #resetBtn:active { background: #22222e; }
+
+  /* ---------- stages ---------- */
+  .stage { flex: 1; min-height: 0; }
+
+  /* --- swipe card --- */
+  #stage-sort {
+    position: relative;
+    display: flex;
+  }
+
+  .card {
+    position: absolute;
+    top: 0; right: 0; bottom: 0; left: 0;
+    border-radius: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 26px;
+    text-align: center;
+    font-weight: 800;
+    font-size: 30px;
+    line-height: 1.15;
+    letter-spacing: -0.6px;
+    box-shadow: 0 18px 40px rgba(0,0,0,.45);
+    -webkit-backface-visibility: hidden;
+    backface-visibility: hidden;
+    -webkit-transform: translate3d(0,0,0);
+    transform: translate3d(0,0,0);
+    touch-action: none;
+    -webkit-user-select: none;
+    user-select: none;
+    cursor: grab;
+  }
+
+  /* --- head to head --- */
+  #stage-vs {
+    display: none;
+    position: relative;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .pick {
+    flex: 1;
+    min-height: 0;
+    border-radius: 26px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 18px;
+    text-align: center;
+    font-weight: 800;
+    font-size: 24px;
+    line-height: 1.15;
+    letter-spacing: -0.4px;
+    box-shadow: 0 12px 30px rgba(0,0,0,.4);
+    transition: transform .12s ease;
+    -webkit-transition: -webkit-transform .12s ease;
+    cursor: pointer;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+  .pick:active { transform: scale(.975); }
+
+  .vs-badge {
+    position: absolute;
+    left: 50%; top: 50%;
+    margin-left: -23px;
+    margin-top: -23px;
+    width: 46px; height: 46px;
+    border-radius: 50%;
+    background: #0b0b10;
+    border: 2px solid #262633;
+    color: #cfcfe0;
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: .5px;
+    display: flex; align-items: center; justify-content: center;
+    z-index: 5;
+    pointer-events: none;
+  }
+
+  /* --- result --- */
+  #stage-result {
+    display: none;
+    flex-direction: column;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    padding: 4px 0 16px;
+  }
+  .result-title { font-size: 22px; font-weight: 800; margin: 4px 0 14px; letter-spacing: -.3px; }
+  .podium-item {
+    display: flex; align-items: center; gap: 14px;
+    padding: 18px 20px;
+    border-radius: 24px;
+    margin-bottom: 12px;
+    box-shadow: 0 10px 24px rgba(0,0,0,.4);
+  }
+  .podium-item.gold { padding: 26px 20px; }
+  .medal { font-size: 28px; line-height: 1; flex: none; }
+  .pname { font-weight: 800; font-size: 18px; line-height: 1.2; }
+  .podium-item.gold .pname { font-size: 22px; }
+  .summary { color: #8a8a99; font-size: 13px; margin: 6px 0 18px; }
+  .btn-restart {
+    height: 56px;
+    border-radius: 18px;
+    border: none;
+    background: #1c1c26;
+    color: #fff;
+    font-size: 17px;
+    font-weight: 700;
+    font-family: inherit;
+    -webkit-appearance: none;
+    appearance: none;
+  }
+  .btn-restart:active { background: #26263a; }
+  .empty { color: #8a8a99; font-size: 16px; padding: 18px 0 24px; }
+
+  /* ---------- bottom ---------- */
+  .hint {
+    flex: none;
+    text-align: center;
+    font-size: 12px;
+    color: #5f5f70;
+    padding: 10px 0 8px;
+  }
+
+  .buttons {
+    flex: none;
+    display: flex;
+    gap: 12px;
+  }
+  .btn {
+    flex: 1;
+    height: 62px;
+    border-radius: 20px;
+    border: none;
+    font-size: 19px;
+    font-weight: 800;
+    letter-spacing: .3px;
+    font-family: inherit;
+    display: flex; align-items: center; justify-content: center;
+    transition: transform .1s ease;
+    -webkit-appearance: none;
+    appearance: none;
+  }
+  .btn:active { transform: scale(.97); }
+  .btn-no  { background: #2a1a22; color: #ff6b81; box-shadow: inset 0 0 0 1.5px #4a2430; }
+  .btn-yes { background: #16301f; color: #4ade80; box-shadow: inset 0 0 0 1.5px #2a5c3a; }
+
+  .noscript-warn {
+    padding: 20px;
+    color: #ffb4b4;
+    font-size: 15px;
+    line-height: 1.5;
+  }
+</style>
+</head>
+<body>
+<noscript>
+  <div class="noscript-warn">
+    JavaScript отключён. Если вы открыли файл через «Файлы» — iOS показывает только предпросмотр без JS.
+    Нажмите «Поделиться» → «Открыть в Safari» (или разместите файл на любом хостинге и откройте ссылку).
+  </div>
+</noscript>
+
+<div id="app">
+  <header>
+    <div>
+      <div class="title" id="title">Выбираем отраву на сегодня</div>
+      <div class="sub" id="sub"></div>
+    </div>
+    <button id="resetBtn" aria-label="Начать заново">↺</button>
+  </header>
+
+  <div class="stage" id="stage-sort">
+    <div class="card" id="card"></div>
+  </div>
+
+  <div class="stage" id="stage-vs">
+    <div class="pick" id="pick0"></div>
+    <div class="pick" id="pick1"></div>
+    <div class="vs-badge">VS</div>
+  </div>
+
+  <div class="stage" id="stage-result"></div>
+
+  <div class="hint" id="hint">свайп влево — нет, вправо — да</div>
+
+  <div class="buttons" id="buttons">
+    <button class="btn btn-no"  id="btnNo">Нет</button>
+    <button class="btn btn-yes" id="btnYes">Да</button>
+  </div>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  /* ------------------------------------------------------------------
+     ВКУСЫ
+  ------------------------------------------------------------------ */
+  var FLAVORS = [
+    { n: "Ананас, Персик",       c1: "#FFD166", c2: "#FF9F45", dark: true  },
+    { n: "Виноград, Гранат",     c1: "#7B2CBF", c2: "#C2185B", dark: false },
+    { n: "Вишневый Всплеск",     c1: "#F25C54", c2: "#A4161A", dark: false },
+    { n: "Вишня, Лимон",         c1: "#E5383B", c2: "#F4A261", dark: false },
+    { n: "Горная Мята",          c1: "#2EC4B6", c2: "#A7F3D0", dark: true  },
+    { n: "Кислая Ежевика, Лед",  c1: "#5A189A", c2: "#9D4EDD", dark: false },
+    { n: "Кислое Яблоко, Лед",   c1: "#8AC926", c2: "#D9F99D", dark: true  },
+    { n: "Кислый Виноград, Лед", c1: "#6A0DAD", c2: "#C77DFF", dark: false },
+    { n: "Клубника, Киви",       c1: "#E63946", c2: "#8AC926", dark: false },
+    { n: "Клюква, Ананас",       c1: "#B3123A", c2: "#FFD166", dark: false },
+    { n: "Ледяной Арбуз",        c1: "#43AA8B", c2: "#F94144", dark: false },
+    { n: "Лимон, Лайм",          c1: "#FDE047", c2: "#84CC16", dark: true  },
+    { n: "Северные Ягоды",       c1: "#3A0CA3", c2: "#B5179E", dark: false },
+    { n: "Сицилийский Апельсин", c1: "#FF8C00", c2: "#FFC300", dark: true  },
+    { n: "Черника, Малина, Лед", c1: "#4361EE", c2: "#F72585", dark: false }
+  ];
+
+  var NEED = 3;
+  var KEY  = 'flavor-sort-v1';
+
+  /* ------------------------------------------------------------------
+     СОСТОЯНИЕ
+  ------------------------------------------------------------------ */
+  var S = {
+    phase: 'sort',
+    sortQueue: [],
+    yes: [],
+    no: [],
+    pool: [],
+    places: [],
+    tCurrent: [],
+    tNext: [],
+    tIndex: 0,
+    pair: null
+  };
+
+  function $(id) { return document.getElementById(id); }
+
+  var cardEl      = $('card');
+  var stageSort   = $('stage-sort');
+  var stageVs     = $('stage-vs');
+  var stageResult = $('stage-result');
+  var hintEl      = $('hint');
+  var buttonsEl   = $('buttons');
+  var titleEl     = $('title');
+  var subEl       = $('sub');
+  var pickEls     = [$('pick0'), $('pick1')];
+
+  var busy = false;
+  var drag = null;
+
+  /* ------------------------------------------------------------------
+     СОХРАНЕНИЕ
+  ------------------------------------------------------------------ */
+  function save() {
+    try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {}
+  }
+
+  function restore() {
+    try {
+      var raw = localStorage.getItem(KEY);
+      if (!raw) return false;
+      var o = JSON.parse(raw);
+      if (!o || typeof o !== 'object') return false;
+      if (!Array.isArray(o.sortQueue) || !Array.isArray(o.yes) || !Array.isArray(o.no)) return false;
+      if (o.phase !== 'sort' && o.phase !== 'tournament' && o.phase !== 'done') return false;
+      S.phase     = o.phase;
+      S.sortQueue = o.sortQueue;
+      S.yes       = o.yes;
+      S.no        = o.no;
+      S.pool      = Array.isArray(o.pool)     ? o.pool     : [];
+      S.places    = Array.isArray(o.places)   ? o.places   : [];
+      S.tCurrent  = Array.isArray(o.tCurrent) ? o.tCurrent : [];
+      S.tNext     = Array.isArray(o.tNext)    ? o.tNext    : [];
+      S.tIndex    = typeof o.tIndex === 'number' ? o.tIndex : 0;
+      S.pair      = Array.isArray(o.pair) && o.pair.length === 2 ? o.pair : null;
+      return true;
+    } catch (e) { return false; }
+  }
+
+  function freshState() {
+    S.phase = 'sort';
+    S.sortQueue = FLAVORS.map(function (_, i) { return i; });
+    S.yes = []; S.no = [];
+    S.pool = []; S.places = [];
+    S.tCurrent = []; S.tNext = []; S.tIndex = 0; S.pair = null;
+  }
+
+  function resetAll() {
+    freshState();
+    save();
+    render();
+  }
+
+  /* ------------------------------------------------------------------
+     РЕНДЕР
+  ------------------------------------------------------------------ */
+  function render() {
+    if (S.phase === 'sort' && S.sortQueue.length === 0) { startTournament(); return; }
+    if (S.phase === 'tournament' && !S.pair)            { stepTournament(); return; }
+
+    stageSort.style.display   = (S.phase === 'sort')       ? 'flex'  : 'none';
+    stageVs.style.display     = (S.phase === 'tournament') ? 'flex'  : 'none';
+    stageResult.style.display = (S.phase === 'done')       ? 'flex'  : 'none';
+    hintEl.style.display      = (S.phase === 'sort')       ? 'block' : 'none';
+    buttonsEl.style.display   = (S.phase === 'sort')       ? 'flex'  : 'none';
+
+    if (S.phase === 'sort')            showSort();
+    else if (S.phase === 'tournament') showVs();
+    else                               showResult();
+
+    updateHeader();
+  }
+
+  function updateHeader() {
+    if (S.phase === 'sort') {
+      titleEl.textContent = 'Выбираем отраву на сегодня';
+      subEl.textContent = 'Осталось ' + S.sortQueue.length +
+                          ' · Да ' + S.yes.length +
+                          ' · Нет ' + S.no.length;
+    } else if (S.phase === 'tournament') {
+      titleEl.textContent = 'Выбираем отраву на сегодня';
+      subEl.textContent = 'Сравниваем ' + S.pool.length +
+                          ' · место ' + (S.places.length + 1);
+    } else {
+      titleEl.textContent = 'Выбираем отраву на сегодня';
+      subEl.textContent = '';
+    }
+  }
+
+  /* ---------- фаза 1 ---------- */
+  function showSort() {
+    var idx = S.sortQueue[0];
+    if (idx === undefined) return;
+    var f = FLAVORS[idx];
+
+    cardEl.textContent = f.n;
+    cardEl.style.background = 'linear-gradient(150deg,' + f.c1 + ',' + f.c2 + ')';
+    cardEl.style.color = f.dark ? '#15151c' : '#ffffff';
+    cardEl.style.fontSize = (f.n.length > 17) ? '24px' : '30px';
+
+    /* без входной анимации — сразу видимая карточка (надёжнее на iOS) */
+    cardEl.style.transition = 'none';
+    cardEl.style.webkitTransform = 'translate3d(0,0,0)';
+    cardEl.style.transform = 'translate3d(0,0,0)';
+    cardEl.style.opacity = '1';
+    cardEl.style.boxShadow = '0 18px 40px rgba(0,0,0,.45)';
+  }
+
+  /* ---------- фаза 2 ---------- */
+  function showVs() {
+    if (!S.pair) return;
+    setPick(pickEls[0], S.pair[0]);
+    setPick(pickEls[1], S.pair[1]);
+  }
+
+  function setPick(el, idx) {
+    var f = FLAVORS[idx];
+    el.textContent = f.n;
+    el.style.background = 'linear-gradient(150deg,' + f.c1 + ',' + f.c2 + ')';
+    el.style.color = f.dark ? '#15151c' : '#ffffff';
+    el.style.webkitTransform = '';
+    el.style.transform = '';
+  }
+
+  /* ---------- фаза 3 ---------- */
+  function showResult() {
+    var medals = ['🥇', '🥈', '🥉'];
+    var html = '<div class="result-title">Топ-3 отравы</div>';
+
+    if (S.places.length === 0) {
+      html += '<div class="empty">Ты не выбрал ни одного вкуса 🤷</div>';
+    } else {
+      for (var i = 0; i < S.places.length; i++) {
+        var f = FLAVORS[S.places[i]];
+        html += '<div class="podium-item' + (i === 0 ? ' gold' : '') + '" ' +
+                'style="background:linear-gradient(150deg,' + f.c1 + ',' + f.c2 + ');' +
+                'color:' + (f.dark ? '#15151c' : '#ffffff') + '">' +
+                  '<div class="medal">' + medals[i] + '</div>' +
+                  '<div class="pname">' + f.n + '</div>' +
+                '</div>';
+      }
+    }
+
+    html += '<div class="summary">Понравилось ' + S.yes.length +
+            ' из ' + FLAVORS.length + ' вкусов</div>';
+    html += '<button class="btn-restart" id="restartBtn">Начать заново</button>';
+
+    stageResult.innerHTML = html;
+    $('restartBtn').addEventListener('click', resetAll);
+  }
+
+  /* ------------------------------------------------------------------
+     ФАЗА 1 — сортировка
+  ------------------------------------------------------------------ */
+  function doSort(dir) {
+    if (busy || S.phase !== 'sort') return;
+    var idx = S.sortQueue[0];
+    if (idx === undefined) return;
+
+    busy = true;
+    var w = window.innerWidth;
+
+    cardEl.style.transition = 'transform .28s cubic-bezier(.3,.9,.4,1), opacity .28s ease-out, -webkit-transform .28s cubic-bezier(.3,.9,.4,1)';
+    var t = 'translate(' + (dir * w * 1.2) + 'px,' + (dir * 40) + 'px) rotate(' + (dir * 22) + 'deg)';
+    cardEl.style.webkitTransform = t;
+    cardEl.style.transform = t;
+    cardEl.style.opacity = '0';
+    cardEl.style.boxShadow = dir > 0
+      ? '0 18px 40px rgba(0,0,0,.45), 0 0 0 5px rgba(74,222,128,.9)'
+      : '0 18px 40px rgba(0,0,0,.45), 0 0 0 5px rgba(255,107,129,.9)';
+
+    setTimeout(function () {
+      if (dir > 0) S.yes.push(idx);
+      else         S.no.push(idx);
+      S.sortQueue.shift();
+      busy = false;
+      save();
+
+      if (S.sortQueue.length === 0) {
+        startTournament();
+      } else {
+        showSort();
+        updateHeader();
+      }
+    }, 270);
+  }
+
+  /* ------------------------------------------------------------------
+     ЖЕСТЫ
+  ------------------------------------------------------------------ */
+  var THRESHOLD = 90;
+
+  function getPoint(e) {
+    if (e.clientX !== undefined && e.clientX !== null) return { x: e.clientX, y: e.clientY };
+    if (e.touches && e.touches.length) return { x: e.touches[0].clientX, y: e.touches[0].clientY };
+    if (e.changedTouches && e.changedTouches.length) return { x: e.changedTouches[0].clientX, y: e.changedTouches[0].clientY };
+    return null;
+  }
+
+  function onStart(e) {
+    if (busy || S.phase !== 'sort') return;
+    var p = getPoint(e);
+    if (!p) return;
+    drag = { x: p.x, y: p.y, dx: 0, dy: 0, t: Date.now() };
+    cardEl.style.transition = 'none';
+    if (e.pointerId !== undefined) {
+      try { cardEl.setPointerCapture(e.pointerId); } catch (err) {}
+    }
+  }
+
+  function onMove(e) {
+    if (!drag) return;
+    var p = getPoint(e);
+    if (!p) return;
+    var dx = p.x - drag.x;
+    var dy = p.y - drag.y;
+    drag.dx = dx; drag.dy = dy;
+
+    var t = 'translate(' + dx + 'px,' + (dy * 0.25) + 'px) rotate(' + (dx / 18) + 'deg)';
+    cardEl.style.webkitTransform = t;
+    cardEl.style.transform = t;
+    cardEl.style.opacity = String(1 - Math.min(Math.abs(dx) / 700, 0.45));
+
+    var alpha = Math.min(Math.abs(dx) / 200, 0.9);
+    cardEl.style.boxShadow = dx > 0
+      ? '0 18px 40px rgba(0,0,0,.45), 0 0 0 4px rgba(74,222,128,' + alpha + ')'
+      : '0 18px 40px rgba(0,0,0,.45), 0 0 0 4px rgba(255,107,129,' + alpha + ')';
+
+    if (e.cancelable && e.type === 'touchmove') e.preventDefault();
+  }
+
+  function onEnd() {
+    if (!drag) return;
+    var dx = drag.dx;
+    var dt = Math.max(Date.now() - drag.t, 1);
+    var speed = Math.abs(dx) / dt;
+    drag = null;
+
+    var fling = Math.abs(dx) > THRESHOLD || (Math.abs(dx) > 30 && speed > 0.45);
+
+    if (fling) {
+      doSort(dx > 0 ? 1 : -1);
+    } else {
+      cardEl.style.transition = 'transform .25s cubic-bezier(.2,.8,.3,1), opacity .25s ease, box-shadow .25s ease, -webkit-transform .25s cubic-bezier(.2,.8,.3,1)';
+      cardEl.style.webkitTransform = 'translate3d(0,0,0)';
+      cardEl.style.transform = 'translate3d(0,0,0)';
+      cardEl.style.opacity = '1';
+      cardEl.style.boxShadow = '0 18px 40px rgba(0,0,0,.45)';
+    }
+  }
+
+  function onCancel() {
+    if (!drag) return;
+    drag = null;
+    cardEl.style.transition = 'transform .25s ease, opacity .25s ease, box-shadow .25s ease, -webkit-transform .25s ease';
+    cardEl.style.webkitTransform = 'translate3d(0,0,0)';
+    cardEl.style.transform = 'translate3d(0,0,0)';
+    cardEl.style.opacity = '1';
+    cardEl.style.boxShadow = '0 18px 40px rgba(0,0,0,.45)';
+  }
+
+  if ('onpointerdown' in window) {
+    cardEl.addEventListener('pointerdown', onStart);
+    cardEl.addEventListener('pointermove', onMove);
+    cardEl.addEventListener('pointerup', onEnd);
+    cardEl.addEventListener('pointercancel', onCancel);
+    document.addEventListener('pointerup', function () { if (drag) onEnd(); });
+  } else {
+    cardEl.addEventListener('touchstart', onStart, { passive: true });
+    cardEl.addEventListener('touchmove', onMove,  { passive: false });
+    cardEl.addEventListener('touchend',  onEnd);
+    cardEl.addEventListener('touchcancel', onCancel);
+  }
+
+  $('btnNo').addEventListener('click',  function () { doSort(-1); });
+  $('btnYes').addEventListener('click', function () { doSort(1); });
+
+  /* ------------------------------------------------------------------
+     ФАЗА 2 — турнир
+  ------------------------------------------------------------------ */
+  function startTournament() {
+    S.phase    = 'tournament';
+    S.pool     = S.yes.slice();
+    S.places   = [];
+    S.tCurrent = []; S.tNext = []; S.tIndex = 0; S.pair = null;
+    beginPlace();
+  }
+
+  function beginPlace() {
+    if (S.places.length >= NEED)        { finish(); return; }
+    if (S.pool.length === 0)            { finish(); return; }
+    if (S.pool.length === 1) {
+      S.places.push(S.pool[0]);
+      S.pool = [];
+      finish();
+      return;
+    }
+    S.tCurrent = S.pool.slice();
+    S.tNext    = [];
+    S.tIndex   = 0;
+    S.pair     = null;
+    stepTournament();
+  }
+
+  function stepTournament() {
+    var guard = 0;
+    while (guard++ < 20000) {
+
+      if (S.tIndex < S.tCurrent.length) {
+        if (S.tIndex + 1 < S.tCurrent.length) {
+          S.pair = [S.tCurrent[S.tIndex], S.tCurrent[S.tIndex + 1]];
+          save();
+          render();
+          return;
+        } else {
+          S.tNext.push(S.tCurrent[S.tIndex]);
+          S.tIndex++;
+          continue;
+        }
+      }
+
+      if (S.tNext.length === 1) {
+        var w = S.tNext[0];
+        S.places.push(w);
+        S.pool = S.pool.filter(function (x) { return x !== w; });
+        S.tCurrent = []; S.tNext = []; S.tIndex = 0; S.pair = null;
+
+        if (S.places.length >= NEED || S.pool.length === 0) { finish(); return; }
+        if (S.pool.length === 1) {
+          S.places.push(S.pool[0]);
+          S.pool = [];
+          finish();
+          return;
+        }
+        S.tCurrent = S.pool.slice();
+        S.tNext = []; S.tIndex = 0;
+        continue;
+      }
+
+      S.tCurrent = S.tNext;
+      S.tNext    = [];
+      S.tIndex   = 0;
+
+      if (S.tCurrent.length === 0) { finish(); return; }
+    }
+  }
+
+  function finish() {
+    S.phase = 'done';
+    S.pair  = null;
+    save();
+    render();
+  }
+
+  function choose(which) {
+    if (busy || S.phase !== 'tournament' || !S.pair) return;
+    busy = true;
+
+    var el = pickEls[which];
+    el.style.webkitTransform = 'scale(1.03)';
+    el.style.transform = 'scale(1.03)';
+
+    var winner = S.pair[which];
+
+    setTimeout(function () {
+      el.style.webkitTransform = '';
+      el.style.transform = '';
+      S.tNext.push(winner);
+      S.tIndex += 2;
+      S.pair = null;
+      busy = false;
+      stepTournament();
+    }, 110);
+  }
+
+  pickEls[0].addEventListener('click', function () { choose(0); });
+  pickEls[1].addEventListener('click', function () { choose(1); });
+
+  /* ------------------------------------------------------------------
+     СБРОС
+  ------------------------------------------------------------------ */
+  $('resetBtn').addEventListener('click', function () {
+    if (window.confirm('Начать сортировку заново?')) resetAll();
+  });
+
+  /* ------------------------------------------------------------------
+     СТАРТ
+  ------------------------------------------------------------------ */
+  if (!restore()) freshState();
+  render();
+
+})();
+</script>
+</body>
+</html>
